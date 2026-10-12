@@ -79,9 +79,10 @@ export async function apiCall<T>(path: string, init: RequestInit): Promise<ApiRe
   };
 }
 
-export function getPage<T>(path: string, page = 0, size = 20, sort?: string): Promise<Page<T>> {
+export function getPage<T>(path: string, page = 0, size = 20, sort?: string, q?: string): Promise<Page<T>> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (sort) params.set("sort", sort);
+  if (q) params.set("q", q);
   return api<Page<T>>(`${path}?${params}`);
 }
 

@@ -8,12 +8,24 @@
   --color-body: #525252;
   --color-line: #9a9a9a;
   --color-surface: #f1f1f1;
+  /* Status: locacao que vence em ate 2 semanas (cor pontual de status, admitida pela identidade visual) */
+  --color-warning: #d97706;
 }
 
 @theme inline {
   --font-sans: var(--font-plex-sans);
   --font-heading: var(--font-inter);
   --font-mono: var(--font-roboto-mono);
+}
+
+/* Superficie de conteudo (cartoes, tabelas, formularios) destacada do fundo neutro. */
+@utility panel {
+  @apply rounded-md border border-line/50 bg-white shadow-sm;
+}
+
+/* Escala base de 18 px (112,5% do padrao do navegador): todos os tamanhos em rem acompanham. */
+html {
+  font-size: 112.5%;
 }
 
 body {

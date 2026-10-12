@@ -3,12 +3,15 @@ import type { ReactNode } from "react";
 import { DataTable } from "@/components/data-table";
 import { DeleteButton } from "@/components/delete-button";
 import { PageHeader } from "@/components/page-header";
+import { LeaseProgress } from "@/components/lease-progress";
+import { ProjectProgress } from "@/components/project-progress";
 import { ClientLine } from "@/components/project-ref";
 import { StatusBadge } from "@/components/status-badge";
 import { apiOrNotFound, isAdmin } from "@/lib/api";
 import { formatCurrency, formatDate, formatPhone } from "@/lib/format";
 import { clientOptions, costCenterOptions, employeeOptions } from "@/lib/options";
-import { MEAL_TYPES, type MealSummary, type Project } from "@/lib/types";
+import { today } from "@/lib/today";
+import { MEAL_TYPES, type Project } from "@/lib/types";
 import { deleteProject, saveProject } from "../actions";
 import { ProjectForm } from "../form";
 
@@ -30,14 +33,14 @@ function Related({ title, add, children }: { title: string; add?: { href: string
 
 export default async function ProjectPage({ params }: PageProps<"/obras/[id]">) {
   const { id } = await params;
-  const [project, admin, clients, costCenters, employees] = await Promise.all([
+  const [project, admin, clients, costCenters, employees, now] = await Promise.all([
     apiOrNotFound<Project>(`/api/projects/${id}`),
     isAdmin(),
     clientOptions(),
     costCenterOptions(),
     employeeOptions(),
+    today(),
   ]);
-  const meals = [project.lunch, project.dinner].filter((meal): meal is MealSummary => meal != null);
 
   return (
     <>
@@ -54,6 +57,10 @@ export default async function ProjectPage({ params }: PageProps<"/obras/[id]">) 
         <span className="font-mono text-sm text-title">{formatCurrency(project.totalPrice)}</span>
         {admin && <DeleteButton action={deleteProject.bind(null, id)} label="esta obra" />}
       </PageHeader>
+
+      <section aria-label="Prazo da obra" className="panel mb-6 max-w-3xl px-5 py-4">
+        <ProjectProgress project={project} today={now} />
+      </section>
 
       <ProjectForm action={saveProject.bind(null, id)} clients={clients} costCenters={costCenters}
         employees={employees} value={project} readOnly={!admin} />
@@ -75,15 +82,15 @@ export default async function ProjectPage({ params }: PageProps<"/obras/[id]">) 
       <Related title="Refeições"
         add={admin && project.restaurants.length > 0 ? { href: "/refeicoes/novo", label: "Nova refeição" } : undefined}>
         <DataTable
-          rows={meals}
-          empty="Nenhuma refeição lançada."
+          rows={project.meals}
+          empty="Nenhuma refeição cadastrada."
           rowHref={(m) => `/refeicoes/${m.id}`}
           columns={[
-            { header: "Tipo", cell: (m) => MEAL_TYPES[m.mealType] },
+            { header: "Tipo", cell: (m) => MEAL_TYPES[m.mealType], className: "whitespace-nowrap" },
             { header: "Restaurante", cell: (m) => m.restaurant.name },
-            { header: "Data", cell: (m) => formatDate(m.date) },
-            { header: "Qtd.", cell: (m) => <span className="font-mono font-medium">{m.quantity}</span>, className: "text-right" },
-            { header: "Total", cell: (m) => <span className="font-mono font-medium">{formatCurrency(m.totalPrice)}</span>, className: "text-right" },
+            { header: "Custo/dia", cell: (m) => <span className="font-mono font-medium">{formatCurrency(m.dailyPrice)}</span>, className: "whitespace-nowrap text-right" },
+            { header: "Dias úteis", cell: (m) => <span className="font-mono font-medium">{m.workingDays ?? "—"}</span>, className: "text-right" },
+            { header: "Total estimado", cell: (m) => <span className="font-mono font-medium">{formatCurrency(m.totalPrice)}</span>, className: "whitespace-nowrap text-right" },
             { header: "Faturada", cell: (m) => (m.isBilled ? "Sim" : "Não") },
           ]}
         />
@@ -98,7 +105,8 @@ export default async function ProjectPage({ params }: PageProps<"/obras/[id]">) 
           columns={[
             { header: "Anfitrião", cell: (a) => a.hostName },
             { header: "Cidade", cell: (a) => `${a.address.city}/${a.address.state}` },
-            { header: "Diárias", cell: (a) => <span className="font-mono font-medium">{a.days}</span>, className: "text-right" },
+            { header: "Locação", cell: (a) => <LeaseProgress periods={a.periods} today={now} compact className="min-w-40" /> },
+            { header: "Término", cell: (a) => <span className="font-mono text-sm">{formatDate(a.endDate)}</span>, className: "whitespace-nowrap" },
             { header: "Total", cell: (a) => <span className="font-mono font-medium">{formatCurrency(a.totalPrice)}</span>, className: "text-right" },
           ]}
         />

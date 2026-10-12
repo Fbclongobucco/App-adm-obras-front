@@ -24,7 +24,7 @@ export function EmployeeForm({ action, costCenters, value, readOnly }: Props) {
         <TextField label="CPF" name="cpf" defaultValue={value ? formatCpf(value.cpf) : undefined} required
           inputMode="numeric" placeholder="000.000.000-00" />
         <TextField label="Data de nascimento" name="birthDate" type="date" defaultValue={value?.birthDate} required />
-        <TextField label="E-mail" name="email" type="email" defaultValue={value?.email} required />
+        <TextField label="E-mail" name="email" type="email" defaultValue={value?.email ?? undefined} />
         <TextField label="Telefone" name="phone" defaultValue={value?.phone ? formatPhone(value.phone) : undefined}
           inputMode="tel" placeholder="(00) 00000-0000" />
         <SelectField label="Função" name="role" options={roles} defaultValue={value?.role} required />

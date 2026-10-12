@@ -23,6 +23,12 @@ export function RestaurantForm({ action, projects, value, projectId, readOnly }:
         <TextField label="Nome" name="name" defaultValue={value?.name} required minLength={2} maxLength={100} />
         <TextField label="Telefone" name="phone" defaultValue={value?.phone ? formatPhone(value.phone) : undefined}
           inputMode="tel" placeholder="(00) 00000-0000" />
+        <TextField label="Taxa por entrega (R$)" name="deliveryFee" inputMode="decimal" placeholder="0,00"
+          defaultValue={value?.deliveryFee != null ? value.deliveryFee.toFixed(2).replace(".", ",") : undefined}
+          hint="Deixe vazio se o restaurante não cobra entrega." />
+        <TextField label="Refrigerante: preço unitário (R$)" name="sodaPrice" inputMode="decimal" placeholder="0,00"
+          defaultValue={value?.sodaPrice != null ? value.sodaPrice.toFixed(2).replace(".", ",") : undefined}
+          hint="1 por entrega, em todas as refeições deste restaurante. Deixe vazio se não fornece." />
       </FieldGroup>
       <FieldGroup title="Endereço (opcional)">
         <AddressFields value={value?.address} />

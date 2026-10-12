@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckboxField, FieldGroup, TextField } from "@/components/form/fields";
-import { MultiCheck } from "@/components/form/multi-check";
+import { MultiSelect } from "@/components/form/multi-select";
 import { ResourceForm } from "@/components/form/resource-form";
 import type { FormState } from "@/lib/form";
 import { USER_ROLES, type User } from "@/lib/types";
@@ -26,8 +26,8 @@ export function UserForm({ action, value, readOnly }: Props) {
         <CheckboxField label="Ativo" name="isActive" defaultChecked={value?.isActive ?? true} />
       </FieldGroup>
       <FieldGroup title="Acesso">
-        <MultiCheck label="Perfis" name="roles" options={roles} defaultValues={value?.roles ?? ["OPERADOR"]}
-          emptyText="" noneSelectedText="Nenhum perfil atribuído." />
+        <MultiSelect label="Perfis" name="roles" options={roles} defaultValues={value?.roles ?? ["OPERADOR"]}
+          searchable={false} emptyText="" noneSelectedText="Nenhum perfil atribuído." />
         <p className="text-xs text-body sm:col-span-2">
           Administrador cria, altera e exclui registros. Operador apenas consulta.
         </p>

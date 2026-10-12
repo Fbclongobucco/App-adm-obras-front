@@ -26,7 +26,7 @@ export function ResourceForm({ action, cancelHref, submitLabel = "Salvar", readO
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-3xl space-y-6 rounded border border-line/30 bg-white p-5 sm:p-6">
+    <form onSubmit={onSubmit} className="panel max-w-3xl space-y-6 p-5 sm:p-6">
       <fieldset disabled={readOnly || pending} className="space-y-6">
         {children}
       </fieldset>

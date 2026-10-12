@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Suspense } from "react";
 import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
@@ -36,10 +37,11 @@ async function LoginForm({
   return (
     <form
       action={login}
-      className="w-full max-w-sm space-y-5 rounded-md border border-line bg-white p-8"
+      className="panel w-full max-w-sm space-y-5 border-t-2 border-t-highlight p-8"
     >
       <div>
-        <h1 className="font-heading text-2xl font-semibold text-title">
+        <Image src="/soler-logo.png" alt="SOLER" width={168} height={65} loading="eager" className="mb-5 h-14 w-auto" />
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-title">
           Administração de Obras
         </h1>
         <p className="mt-1 text-sm text-body">Acesse com sua conta.</p>
@@ -54,22 +56,22 @@ async function LoginForm({
       )}
 
       <label className="block space-y-1">
-        <span className="text-sm text-title">E-mail</span>
+        <span className="text-sm font-medium text-title">E-mail</span>
         <input
           name="email"
           type="email"
           required
-          className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-title"
+          className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-highlight focus:ring-1 focus:ring-highlight/30"
         />
       </label>
 
       <label className="block space-y-1">
-        <span className="text-sm text-title">Senha</span>
+        <span className="text-sm font-medium text-title">Senha</span>
         <input
           name="password"
           type="password"
           required
-          className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-title"
+          className="w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-highlight focus:ring-1 focus:ring-highlight/30"
         />
       </label>
 

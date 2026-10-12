@@ -3,7 +3,7 @@ import Link from "next/link";
 /** Aviso de dependencia: o cadastro exige outro registro que ainda nao existe. */
 export function Notice({ message, link }: { message: string; link?: { href: string; label: string } }) {
   return (
-    <div className="max-w-3xl rounded border border-line/30 border-l-2 border-l-accent bg-white px-4 py-3 text-[15px] text-title">
+    <div className="panel max-w-3xl border-l-[3px] border-l-accent px-4 py-3 text-[0.9375rem] text-title">
       {message}
       {link && (
         <>

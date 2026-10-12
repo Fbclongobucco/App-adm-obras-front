@@ -1,15 +1,21 @@
 import Link from "next/link";
 
-export function Pagination({ href, page, totalPages, totalElements }: {
+export function Pagination({ href, page, totalPages, totalElements, query }: {
   href: string;
   page: number;
   totalPages: number;
   totalElements: number;
+  /** Termo de busca atual, mantido nos links de pagina. */
+  query?: string;
 }) {
   if (totalPages <= 1) {
     return <p className="mt-3 font-mono text-xs text-body">{totalElements} registro(s)</p>;
   }
-  const link = (target: number) => `${href}?page=${target}`;
+  const link = (target: number) => {
+    const params = new URLSearchParams({ page: String(target) });
+    if (query) params.set("q", query);
+    return `${href}?${params}`;
+  };
   return (
     <div className="mt-3 flex items-center justify-between text-sm text-body">
       <span className="font-mono text-xs">
@@ -21,6 +27,11 @@ export function Pagination({ href, page, totalPages, totalElements }: {
       </div>
     </div>
   );
+}
+
+/** Le ?q= da URL (termo de busca), sem espacos nas pontas. */
+export function queryParam(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 }
 
 /** Le ?page= com seguranca (valor invalido vira 0). */

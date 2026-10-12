@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react
 import type { Address } from "@/lib/types";
 
 const inputClass =
-  "w-full rounded border border-line/60 bg-white px-3 py-2 text-[15px] text-title outline-none " +
+  "w-full rounded border border-line/60 bg-white px-3 py-2 text-[0.9375rem] text-title outline-none " +
   "focus:border-highlight focus:ring-1 focus:ring-highlight/30 disabled:bg-surface disabled:text-title";
 
 type FieldProps = {
@@ -92,7 +92,7 @@ export function CheckboxField({
 
 export function FieldGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="space-y-4 border-t border-line/30 pt-5 first:border-t-0 first:pt-0">
+    <fieldset className="space-y-4 border-t border-line/50 pt-5 first:border-t-0 first:pt-0">
       <legend className="pr-3 font-heading text-sm font-semibold uppercase tracking-wide text-highlight">
         {title}
       </legend>

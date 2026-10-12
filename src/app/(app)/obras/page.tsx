@@ -1,16 +1,19 @@
-import { DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
-import { Pagination, pageParam } from "@/components/pagination";
-import { StatusBadge } from "@/components/status-badge";
+import { Pagination, pageParam, queryParam } from "@/components/pagination";
+import { SearchEmpty, SearchField } from "@/components/search-field";
+import { ProjectGrid } from "@/components/project-card";
 import { getPage, isAdmin } from "@/lib/api";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
+import { today } from "@/lib/today";
 import type { ProjectSummary } from "@/lib/types";
 
 export default async function ProjectsPage({ searchParams }: PageProps<"/obras">) {
-  const page = pageParam((await searchParams).page);
-  const [result, admin] = await Promise.all([
-    getPage<ProjectSummary>("/api/projects", page, 20, "updatedAt,desc"),
+  const params = await searchParams;
+  const page = pageParam(params.page);
+  const q = queryParam(params.q);
+  const [result, admin, now] = await Promise.all([
+    getPage<ProjectSummary>("/api/projects", page, 20, "updatedAt,desc", q),
     isAdmin(),
+    today(),
   ]);
 
   return (
@@ -20,21 +23,15 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/obras">
         description="Ordenadas pela atualização mais recente. Exigem cliente e centro de custo."
         action={admin ? { href: "/obras/novo", label: "Nova obra" } : undefined}
       />
-      <DataTable
-        rows={result.content}
-        empty="Nenhuma obra cadastrada."
-        rowHref={(row) => `/obras/${row.id}`}
-        columns={[
-          { header: "OS", cell: (p) => <span className="font-mono font-medium">{p.os}</span>, className: "whitespace-nowrap" },
-          { header: "Descrição", cell: (p) => p.description ?? "—" },
-          { header: "Cliente", cell: (p) => <span className="font-medium">{p.client.name}</span> },
-          { header: "Início", cell: (p) => formatDate(p.startDate), className: "whitespace-nowrap" },
-          { header: "Total", cell: (p) => <span className="font-mono font-medium">{formatCurrency(p.totalPrice)}</span>, className: "whitespace-nowrap text-right" },
-          { header: "Situação", cell: (p) => <StatusBadge done={p.isCompleted} doneLabel="Concluída" openLabel="Em andamento" /> },
-          { header: "Atualizada em", cell: (p) => <span className="font-mono text-xs">{formatDateTime(p.updatedAt)}</span>, className: "whitespace-nowrap" },
-        ]}
-      />
-      <Pagination href="/obras" page={page} totalPages={result.totalPages} totalElements={result.totalElements} />
+      <SearchField href="/obras" initial={q} placeholder="Buscar por OS, descrição ou cliente" />
+      {q && result.totalElements === 0 ? (
+        <SearchEmpty href="/obras" query={q} />
+      ) : (
+        <>
+          <ProjectGrid projects={result.content} today={now} empty="Nenhuma obra cadastrada." showUpdatedAt />
+        </>
+      )}
+      <Pagination href="/obras" query={q} page={page} totalPages={result.totalPages} totalElements={result.totalElements} />
     </>
   );
 }

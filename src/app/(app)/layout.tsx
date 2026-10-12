@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Sidebar, SidebarNav } from "@/components/sidebar";
@@ -28,18 +29,22 @@ async function UserMenu() {
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-full flex-1 flex-col sm:flex-row">
-      <aside className="border-b border-line/30 bg-white sm:sticky sm:top-0 sm:h-screen sm:w-56 sm:shrink-0 sm:overflow-y-auto sm:border-r sm:border-b-0 lg:w-60">
-        <Link href="/" className="block border-b border-line/30 px-5 py-5">
-          <span className="block font-heading text-base font-semibold text-title">Administração de Obras</span>
-          <span className="mt-0.5 block text-xs text-body">Gestão de obras e equipes</span>
+      {/* Fixo na viewport: com sticky, um dropdown que passa do fim da pagina deixava o menu subir com o conteiner */}
+      <aside className="bg-title sm:fixed sm:inset-y-0 sm:left-0 sm:z-30 sm:w-56 sm:overflow-y-auto lg:w-60">
+        {/* A logo e grafite e nao pode ser recolorida: fica num bloco claro compacto sobre o menu escuro */}
+        <Link href="/" aria-label="SOLER · Dashboard" className="flex flex-col items-start gap-2 px-5 pt-5 pb-2">
+          <span className="rounded-md bg-white px-3 py-2">
+            <Image src="/soler-logo.png" alt="SOLER" width={168} height={65} loading="eager" className="h-9 w-auto" />
+          </span>
+          <span className="text-xs font-medium uppercase tracking-wider text-white/70">Administração de obras</span>
         </Link>
         <Suspense fallback={<SidebarNav pathname={null} />}>
           <Sidebar />
         </Suspense>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-end border-b border-line/30 bg-white px-6 py-3">
+      <div className="flex min-w-0 flex-1 flex-col sm:pl-56 lg:pl-60">
+        <header className="flex items-center justify-end border-b border-line/60 bg-white px-6 py-3">
           <Suspense fallback={<div className="h-9 w-40 rounded bg-surface" />}>
             <UserMenu />
           </Suspense>

@@ -1,7 +1,7 @@
 "use server";
 
 import { deleteResource, saveResource } from "@/lib/actions";
-import { address, text, type FormState } from "@/lib/form";
+import { address, decimal, text, type FormState } from "@/lib/form";
 
 const API = "/api/restaurants";
 const LIST = "/restaurantes";
@@ -12,6 +12,8 @@ export async function saveRestaurant(id: string | null, _state: FormState, data:
     phone: text(data, "phone"),
     address: address(data, true),
     projectId: text(data, "projectId"),
+    deliveryFee: decimal(data, "deliveryFee"),
+    sodaPrice: decimal(data, "sodaPrice"),
   }, LIST);
 }
 

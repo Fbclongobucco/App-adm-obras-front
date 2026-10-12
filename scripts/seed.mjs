@@ -60,6 +60,36 @@ function day(offset) {
   return date.toISOString().slice(0, 10);
 }
 
+/** Proxima data (aaaa-mm-dd) a partir de `from`, ate `to`, cujo dia da semana atende `match` (0 = domingo). */
+function nextDate(from, to, match) {
+  const date = new Date(`${from}T12:00:00Z`);
+  const limit = new Date(`${to}T12:00:00Z`);
+  while (date <= limit) {
+    if (match(date.getUTCDay())) return date.toISOString().slice(0, 10);
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return null;
+}
+
+/** Ajustes de exemplo: sabado com 6 almocos e um dia util sem fornecimento. */
+async function seedAdjustments(mealId, mealType, start, end) {
+  const saturday = nextDate(start, end, (weekday) => weekday === 6);
+  const weekday = nextDate(start, end, (weekday) => weekday >= 1 && weekday <= 5);
+  if (saturday) {
+    await post(`/api/meals/${mealId}/adjustments`, {
+      date: saturday, type: "EXTRA_DAY", note: "Sábado trabalhado",
+      // So as refeicoes servidas pelo tipo recebem quantidade
+      lunchQuantity: mealType === "DINNER" ? null : 6,
+      dinnerQuantity: mealType === "DINNER" ? 4 : mealType === "LUNCH_AND_DINNER" ? 0 : null,
+    });
+  }
+  if (weekday) {
+    await post(`/api/meals/${mealId}/adjustments`, {
+      date: weekday, type: "NO_SERVICE", lunchQuantity: null, dinnerQuantity: null, note: "Feriado",
+    });
+  }
+}
+
 const COST_CENTERS = ["Centro Industrial Norte", "Centro de Manutenção Sul", "Centro de Montagem Leste"];
 
 const CLIENTS = [
@@ -67,7 +97,8 @@ const CLIENTS = [
     address: address("Rodovia SP-101", "4500", "Distrito Industrial", "Campinas", "SP", "13054700") },
   { name: "Têxtil Serra Clara", email: "engenharia@serraclara.example", phone: "1135209000",
     address: address("Avenida das Nações", "1200", "Jardim Industrial", "Sorocaba", "SP", "18087000") },
-  { name: "Fundição Vale Azul", email: "manutencao@valeazul.example", phone: "3133418800",
+  // Sem e-mail: o campo e opcional para clientes
+  { name: "Fundição Vale Azul", email: null, phone: "3133418800",
     address: address("Rua dos Metalúrgicos", "85", "Cidade Industrial", "Contagem", "MG", "32210000") },
 ];
 
@@ -109,11 +140,15 @@ const RESTAURANTS = [
   ["Restaurante Fogão a Lenha", "3133019000"],
 ];
 
+// [anfitriao, telefone, capacidade, entrada (dias a partir de hoje), valor por mes, renovacoes]
+// Entradas escalonadas para a barra da locacao: em andamento, laranja (ate 14 dias), vermelha (menos de 7),
+// vencida e uma renovada por mais um mes.
 const ACCOMMODATIONS = [
-  ["Pousada Recanto do Vale", "1998123400", 4, 15, "2400.00"],
-  ["Hotel Estrada Real", "1597456700", 4, 20, "3000.00"],
-  ["Pousada Serra Clara", "1599871200", 4, 25, "3600.00"],
-  ["Hotel Campo Novo", "1998564300", 4, 30, "4200.00"],
+  ["Pousada Recanto do Vale", "1998123400", 4, -5, "2400.00", 0],
+  ["Hotel Estrada Real", "1597456700", 4, -20, "3000.00", 0],
+  ["Pousada Serra Clara", "1599871200", 4, -27, "3600.00", 0],
+  ["Hotel Campo Novo", "1998564300", 4, -40, "4200.00", 0],
+  ["Pousada Bela Vista", "1998771100", 2, -45, "2800.00", 1],
 ];
 
 async function main() {
@@ -139,7 +174,8 @@ async function main() {
     const login = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(" ");
     employees.push(await post("/api/employees", {
       name,
-      email: `${login[0]}.${login.at(-1)}@equipe.example`,
+      // O ultimo colaborador fica sem e-mail, que e opcional
+      email: i === EMPLOYEES.length - 1 ? null : `${login[0]}.${login.at(-1)}@equipe.example`,
       cpf: cpf(i + 1),
       phone: `1999${String(1000000 + i * 1371).slice(-7)}`,
       address: null,
@@ -159,17 +195,17 @@ async function main() {
       costCenterId: costCenters[i % costCenters.length].id,
       clientId: clients[i % clients.length].id,
       startDate: day(-120 + i * 10),
-      endDate: done ? day(-30 + i * 5) : null,
+      // Em andamento: termino previsto em parte das obras, para o total estimado das refeicoes
+      endDate: done ? day(-30 + i * 5) : i % 3 === 0 ? null : day(30 + i * 5),
       isCompleted: done,
       employeeIds: [employees[i % employees.length].id, employees[(i + 3) % employees.length].id],
       accommodationIds: [],
-      lunchId: null,
-      dinnerId: null,
     }));
   }
 
   const recent = projects.slice(-6);
   let meals = 0;
+  let adjusted = false;
   for (const [i, [name, phone]] of RESTAURANTS.entries()) {
     const project = recent[i];
     const city = CLIENTS[PROJECTS.indexOf(project.description) % CLIENTS.length].address;
@@ -178,29 +214,43 @@ async function main() {
       phone,
       address: { ...city, street: "Rua do Comércio", number: String(100 + i * 25), zipCode: city.zipCode },
       projectId: project.id,
+      // Metade dos restaurantes cobra entrega; refrigerante (1 por entrega) em parte deles
+      deliveryFee: i % 2 === 0 ? "8.00" : null,
+      sodaPrice: i % 3 === 0 ? null : "5.00",
     });
-    for (const [mealType, price, quantity] of [["LUNCH", "32.50", 8], ["DINNER", "28.00", 6]]) {
-      await post("/api/meals", {
-        restaurantId: restaurant.id, mealType, price, quantity, date: day(-5), isBilled: mealType === "LUNCH",
-      });
+    // Alterna um restaurante com almoco e jantar e um com refeicoes cadastradas separadamente
+    const lunch = { lunchQuantity: 8, lunchPrice: "32.50" };
+    const dinner = { dinnerQuantity: 6, dinnerPrice: "28.00" };
+    const servings = i % 2 === 0
+      ? [{ mealType: "LUNCH_AND_DINNER", ...lunch, ...dinner }]
+      : [{ mealType: "LUNCH", ...lunch }, { mealType: "DINNER", ...dinner }];
+    for (const serving of servings) {
+      const meal = await post("/api/meals", { restaurantId: restaurant.id, isBilled: serving.mealType !== "DINNER", ...serving });
       meals++;
+      // Primeira refeicao com obra com termino: um sabado trabalhado e um dia util sem fornecimento
+      if (!adjusted && project.endDate) {
+        await seedAdjustments(meal.id, serving.mealType, project.startDate, project.endDate);
+        adjusted = true;
+      }
     }
   }
 
-  for (const [i, [hostName, hostPhone, capacity, days, totalPrice]] of ACCOMMODATIONS.entries()) {
+  for (const [i, [hostName, hostPhone, capacity, entry, monthlyPrice, renewals]] of ACCOMMODATIONS.entries()) {
     const project = recent[i];
     const city = CLIENTS[PROJECTS.indexOf(project.description) % CLIENTS.length].address;
-    await post("/api/accommodations", {
+    const accommodation = await post("/api/accommodations", {
       hostName,
       hostPhone,
       address: { ...city, street: "Avenida Central", number: String(300 + i * 40) },
       capacity,
-      days,
       isContract: i % 2 === 0,
-      totalPrice,
+      startDate: day(entry),
+      monthlyPrice,
       projectId: project.id,
       employeeIds: [employees[i * 2].id, employees[i * 2 + 1].id],
     });
+    // Renovacao pela sugestao da API: mais um mes pelo valor mensal
+    for (let r = 0; r < renewals; r++) await post(`/api/accommodations/${accommodation.id}/renewals`, {});
   }
 
   console.log(

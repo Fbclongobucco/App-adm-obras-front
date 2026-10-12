@@ -9,8 +9,8 @@ const API = "/api/projects";
 const LIST = "/obras";
 
 /**
- * O PUT substitui a obra inteira. Hospedagens e refeicoes sao gerenciadas nos proprios cadastros,
- * entao a edicao reenvia os vinculos atuais para nao desfaze-los.
+ * O PUT substitui a obra inteira. Hospedagens sao gerenciadas no proprio cadastro, entao a edicao
+ * reenvia os vinculos atuais para nao desfaze-los. Refeicoes se vinculam pelo restaurante.
  */
 export async function saveProject(id: string | null, _state: FormState, data: FormData): Promise<FormState> {
   const current = id ? await api<Project>(`${API}/${id}`) : null;
@@ -24,8 +24,6 @@ export async function saveProject(id: string | null, _state: FormState, data: Fo
     isCompleted: checkbox(data, "isCompleted"),
     employeeIds: list(data, "employeeIds"),
     accommodationIds: current?.accommodations.map((a) => a.id) ?? [],
-    lunchId: current?.lunch?.id ?? null,
-    dinnerId: current?.dinner?.id ?? null,
   }, LIST);
 }
 

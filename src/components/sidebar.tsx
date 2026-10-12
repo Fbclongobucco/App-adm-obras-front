@@ -18,9 +18,9 @@ export function SidebarNav({ pathname }: { pathname: string | null }) {
   return (
     <nav aria-label="Menu principal" className="flex flex-col gap-5 px-3 py-5">
       {NAV.map((section, index) => (
-        <div key={section.title ?? index} className="space-y-1">
+        <div key={section.title ?? index} className="space-y-1.5">
           {section.title && (
-            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-body">
+            <p className="px-3 pb-0.5 text-xs font-semibold uppercase tracking-widest text-white/70">
               {section.title}
             </p>
           )}
@@ -31,13 +31,13 @@ export function SidebarNav({ pathname }: { pathname: string | null }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-r border-l-2 px-3 py-2 text-sm font-medium ${
+                className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-[0.9375rem] outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-white ${
                   active
-                    ? "border-accent bg-surface text-highlight"
-                    : "border-transparent text-title hover:bg-surface"
+                    ? "border-white bg-white font-semibold text-title shadow-[inset_3px_0_0_var(--color-accent)]"
+                    : "border-white/10 bg-white/[0.06] font-medium text-white hover:border-white/25 hover:bg-white/[0.12]"
                 }`}
               >
-                <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor"
+                <svg viewBox="0 0 24 24" className="size-[1.125rem] shrink-0" fill="none" stroke="currentColor"
                   strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d={item.icon} />
                 </svg>

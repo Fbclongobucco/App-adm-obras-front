@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckboxField, FieldGroup, SelectField, TextField, type Option } from "@/components/form/fields";
-import { MultiCheck } from "@/components/form/multi-check";
+import { MultiSelect } from "@/components/form/multi-select";
 import { ResourceForm } from "@/components/form/resource-form";
 import type { FormState } from "@/lib/form";
 import type { Project } from "@/lib/types";
@@ -32,8 +32,9 @@ export function ProjectForm({ action, clients, costCenters, employees, value, re
         <CheckboxField label="Obra concluída" name="isCompleted" defaultChecked={value?.isCompleted} />
       </FieldGroup>
       <FieldGroup title="Equipe">
-        <MultiCheck label="Colaboradores" name="employeeIds" options={employees}
+        <MultiSelect label="Colaboradores" name="employeeIds" options={employees}
           defaultValues={value?.employees.map((e) => e.id)} emptyText="Nenhum colaborador cadastrado."
+          noResultsText="Nenhum colaborador encontrado."
           noneSelectedText="Nenhum colaborador na equipe desta obra." />
       </FieldGroup>
     </ResourceForm>
