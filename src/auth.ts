@@ -3,9 +3,6 @@ import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 
 const API_URL = process.env.API_URL;
-// Origem pública do front. O backend exige Origin permitido em refresh e logout
-// (proteção CSRF do cookie de refresh); a chamada sai do servidor e precisa informá-lo.
-const APP_ORIGIN = process.env.APP_ORIGIN ?? "http://localhost:3000";
 const REFRESH_COOKIE = "refresh_token";
 // Renova um pouco antes de expirar para não enviar token vencido ao backend
 const EXPIRY_MARGIN_MS = 30_000;
@@ -55,11 +52,12 @@ function refreshTokens(refreshToken: string): Promise<RefreshedTokens> {
   let pending = refreshes.get(refreshToken);
   if (!pending) {
     pending = (async () => {
+      // Sem Origin: a chamada sai do servidor, e o backend so recusa Origin de site fora da lista.
+      // Assim o front funciona em qualquer endereço sem configurar a URL dele no backend.
       const res = await fetch(`${API_URL}/api/auth/refresh`, {
         method: "POST",
         headers: {
           Cookie: `${REFRESH_COOKIE}=${refreshToken}`,
-          Origin: APP_ORIGIN,
         },
         cache: "no-store",
       });
@@ -168,7 +166,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         method: "POST",
         headers: {
           Cookie: `${REFRESH_COOKIE}=${token.refreshToken}`,
-          Origin: APP_ORIGIN,
         },
         cache: "no-store",
       }).catch((e) => console.error("[auth] logout no backend:", e));
