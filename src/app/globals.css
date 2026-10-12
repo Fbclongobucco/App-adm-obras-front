@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Paleta SOLER: neutros na base, grafites no texto, vermelhos só em destaques pontuais. */
+@theme {
+  --color-highlight: #550e10;
+  --color-accent: #a20606;
+  --color-title: #252525;
+  --color-body: #525252;
+  --color-line: #9a9a9a;
+  --color-surface: #f1f1f1;
+}
+
+@theme inline {
+  --font-sans: var(--font-plex-sans);
+  --font-heading: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-title);
+}
