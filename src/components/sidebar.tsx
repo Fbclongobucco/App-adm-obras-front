@@ -8,13 +8,16 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Menu com o item ativo destacado. Fica dentro de <Suspense>, porque a rota so e conhecida em execucao. */
-export function Sidebar() {
-  return <SidebarNav pathname={usePathname()} />;
+/**
+ * Menu com o item ativo destacado, no desktop e no painel do celular. Fica dentro de <Suspense>, porque a
+ * rota so e conhecida em execucao. {@code onNavigate}: chamado ao escolher um item (o painel fecha).
+ */
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  return <NavMenu pathname={usePathname()} onNavigate={onNavigate} />;
 }
 
-/** Menu sem item ativo (pathname null), usado como fallback do <Suspense>. */
-export function SidebarNav({ pathname }: { pathname: string | null }) {
+/** Itens de {@link NAV} por secao; sem item ativo quando pathname e null (fallback do <Suspense>). */
+export function NavMenu({ pathname, onNavigate }: { pathname: string | null; onNavigate?: () => void }) {
   return (
     <nav aria-label="Menu principal" className="flex flex-col gap-5 px-3 py-5">
       {NAV.map((section, index) => (
@@ -31,6 +34,7 @@ export function SidebarNav({ pathname }: { pathname: string | null }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                onClick={onNavigate}
                 className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-[0.9375rem] outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-white ${
                   active
                     ? "border-white bg-white font-semibold text-title shadow-[inset_3px_0_0_var(--color-accent)]"
