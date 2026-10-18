@@ -18,33 +18,39 @@ const COUNTERS = [
 /** Icones dos indicadores: os mesmos do menu, pelo href. */
 const NAV_ICONS = Object.fromEntries(NAV.flatMap((section) => section.items).map((item) => [item.href, item.icon]));
 
+/** Obras exibidas em destaque: tres fileiras na grade larga. */
+const RECENT_PROJECTS = 9;
+
 export default async function DashboardPage() {
   const [now, recent, ...totals] = await Promise.all([
     today(),
-    getPage<ProjectSummary>("/api/projects", 0, 6, "updatedAt,desc"),
+    getPage<ProjectSummary>("/api/projects", 0, RECENT_PROJECTS, "updatedAt,desc"),
     ...COUNTERS.map((counter) => getPage(counter.path, 0, 1)),
   ]);
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Visão geral dos cadastros e das obras alteradas por último." />
+      <PageHeader title="Dashboard" description="Totais dos cadastros e obras alteradas por último." />
 
-      <section aria-label="Totais" className="mb-10 grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-4">
+      {/* Faixa compacta: as obras sao o destaque e precisam caber na primeira tela */}
+      <section aria-label="Totais"
+        className="panel mb-8 grid grid-cols-2 divide-line/30 lg:grid-cols-3 min-[83.75rem]:grid-cols-6 min-[83.75rem]:divide-x">
         {COUNTERS.map((counter, index) => (
           <Link
             key={counter.href}
             href={counter.href}
-            className="panel flex items-center gap-4 px-4 py-4 transition-shadow hover:border-line hover:shadow-md"
+            className="flex min-w-0 items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-surface sm:py-3"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface text-highlight">
-              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8}
-                strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d={NAV_ICONS[counter.href]} />
-              </svg>
-            </span>
+            <svg viewBox="0 0 24 24" className="size-[1.125rem] shrink-0 text-highlight" fill="none" stroke="currentColor"
+              strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d={NAV_ICONS[counter.href]} />
+            </svg>
             <span className="min-w-0">
-              <span className="block text-xs font-semibold break-words uppercase tracking-wide text-body">{counter.label}</span>
-              <span className="mt-0.5 block font-mono text-3xl font-medium leading-tight text-title">
+              {/* Rotulo de varias palavras quebra linha em vez de cortar */}
+              <span className="block text-[0.6875rem] leading-tight font-semibold break-words uppercase text-body">
+                {counter.label}
+              </span>
+              <span className="block font-mono text-xl font-medium leading-tight text-title">
                 {totals[index].totalElements}
               </span>
             </span>
@@ -52,12 +58,13 @@ export default async function DashboardPage() {
         ))}
       </section>
 
-      <section aria-labelledby="recentes">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 id="recentes" className="font-heading text-lg font-semibold text-title">
-            Últimas obras atualizadas
-          </h2>
-          <Link href="/obras" className="text-sm font-medium text-highlight hover:underline">
+      <section aria-labelledby="obras">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <div>
+            <h2 id="obras" className="font-heading text-xl font-semibold text-title">Obras</h2>
+            <p className="text-sm text-body">Alteradas por último</p>
+          </div>
+          <Link href="/obras" className="shrink-0 text-sm font-medium text-highlight hover:underline">
             Ver todas
           </Link>
         </div>
