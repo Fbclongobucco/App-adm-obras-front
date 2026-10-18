@@ -5,6 +5,10 @@
 ### Requirement: Dashboard com indicadores no topo
 O dashboard SHALL exibir no topo os totais numa faixa compacta, um único bloco neutro com os itens Obras, Colaboradores, Clientes, Restaurantes, Hospedagens e Centros de custo, cada um com ícone da seção, rótulo e número. No desktop a faixa MUST ocupar uma linha; no celular, 2 itens por linha. Logo abaixo, a seção "Obras" SHALL mostrar as 9 obras alteradas por último, com "Ver todas". Os itens MUST NOT usar faixa ou borda vermelha em repouso. Cada item MUST levar à listagem correspondente.
 
+#### Scenario: Indicadores visíveis ao abrir
+- **WHEN** o usuário abre o dashboard em tela de desktop
+- **THEN** a faixa de totais aparece acima da seção "Obras", sem rolagem, com ícone, rótulo e número em cada item
+
 #### Scenario: Obras na primeira tela no desktop
 - **WHEN** o usuário abre o dashboard em 1366 × 900 px
 - **THEN** a faixa de totais ocupa uma linha e a primeira fileira de cards de obra aparece sem rolagem
@@ -13,11 +17,11 @@ O dashboard SHALL exibir no topo os totais numa faixa compacta, um único bloco 
 - **WHEN** o usuário abre o dashboard em 375 × 812 px
 - **THEN** a faixa mostra os 6 totais em 3 linhas de 2, e o título "Obras" aparece sem rolagem
 
-#### Scenario: Item em repouso
+#### Scenario: Cartão em repouso
 - **WHEN** o dashboard é exibido sem interação
 - **THEN** nenhum item da faixa mostra faixa ou borda vermelha
 
-#### Scenario: Navegação pelo item
+#### Scenario: Navegação pelo indicador
 - **WHEN** o usuário clica no item "Obras" da faixa
 - **THEN** a aplicação abre a listagem de obras
 
