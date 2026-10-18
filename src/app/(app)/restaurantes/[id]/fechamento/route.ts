@@ -22,7 +22,8 @@ export async function GET(request: Request, { params }: RouteContext<"/restauran
     prices: {
       lunch: lunch?.lunchPrice ?? null,
       dinner: dinner?.dinnerPrice ?? null,
-      deliveryFee: restaurant.deliveryFee,
+      lunchDeliveryFee: restaurant.lunchDeliveryFee,
+      dinnerDeliveryFee: restaurant.dinnerDeliveryFee,
       soda: restaurant.sodaPrice,
     },
   });

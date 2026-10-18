@@ -78,8 +78,10 @@ export type RestaurantSummary = Audit & {
   name: string;
   phone: string | null;
   address: Address | null;
-  /** Taxa por entrega; null quando o restaurante nao cobra. */
-  deliveryFee: number | null;
+  /** Taxa por entrega do almoco; null quando nao e cobrada. */
+  lunchDeliveryFee: number | null;
+  /** Taxa por entrega do jantar; null quando nao e cobrada. */
+  dinnerDeliveryFee: number | null;
   /** Preco do refrigerante, 1 por entrega em todas as refeicoes; null quando nao fornece. */
   sodaPrice: number | null;
 };
@@ -122,16 +124,21 @@ export type MealSummary = Audit & {
   serviceDays: number | null;
   noServiceDays: number;
   extraDays: number;
+  /** Dias uteis com outros numeros (ajuste "Dia alterado") no periodo. */
+  changedDays: number;
   extraDaysPrice: number;
-  /** Custo por dia x dias de fornecimento + dias extras. */
+  /** Soma do valor de cada dia do periodo, com os ajustes. */
   totalPrice: number | null;
   projections: MealProjection[];
 };
 
-export const ADJUSTMENT_TYPES = { EXTRA_DAY: "Dia extra", NO_SERVICE: "Sem fornecimento" } as const;
+export const ADJUSTMENT_TYPES = { EXTRA_DAY: "Dia extra", CHANGED: "Dia alterado", NO_SERVICE: "Sem fornecimento" } as const;
 export type AdjustmentType = keyof typeof ADJUSTMENT_TYPES;
 
-/** Excecao de fornecimento numa data: dia extra (fim de semana) ou sem fornecimento (dia util). */
+/**
+ * Excecao de fornecimento numa data: dia extra (fim de semana), dia alterado (dia util com outros numeros) ou
+ * sem fornecimento (dia util). Entregas e refrigerantes sao os efetivos (informados ou padrao).
+ */
 export type MealAdjustment = {
   id: string;
   date: string;
@@ -140,6 +147,8 @@ export type MealAdjustment = {
   lunchQuantity: number | null;
   dinnerQuantity: number | null;
   note: string | null;
+  lunchDeliveries: number;
+  dinnerDeliveries: number;
   deliveries: number;
   sodas: number;
   price: number;
@@ -154,6 +163,7 @@ export const WEEKDAYS: Record<string, string> = {
 
 export const DAY_STATUS = {
   SERVICE: "Fornecimento",
+  CHANGED: "Fornecimento alterado",
   NO_SERVICE: "Sem fornecimento",
   EXTRA_DAY: "Dia extra",
   OFF: "Sem expediente",
@@ -172,10 +182,28 @@ export type DayClosing = {
   partialNoService: boolean;
   lunchMeals: number;
   dinnerMeals: number;
+  lunchDeliveries: number;
+  dinnerDeliveries: number;
+  /** Entregas do almoco mais as do jantar. */
   deliveries: number;
   sodas: number;
   price: number;
   adjustmentIds: string[];
+  /** Observacao do ajuste do dia. */
+  note: string | null;
+  /** No restaurante: numeros de cada refeicao no dia; vazio no fechamento da refeicao. */
+  meals: MealDay[];
+};
+
+export type MealDay = {
+  mealId: string;
+  status: DayStatus;
+  lunchMeals: number;
+  dinnerMeals: number;
+  lunchDeliveries: number;
+  dinnerDeliveries: number;
+  sodas: number;
+  price: number;
 };
 
 /** Fechamento semanal calculado pela API; selected e o inicio da semana exibida (null se a obra nao tem semanas). */

@@ -38,7 +38,7 @@ export default async function MealPage({ params, searchParams }: PageProps<"/ref
         kind: "meal",
         meal: {
           id, label: MEAL_TYPES[meal.mealType], ...MEAL_SERVES[meal.mealType],
-          lunchQuantity: meal.lunchQuantity, dinnerQuantity: meal.dinnerQuantity,
+          lunchQuantity: meal.lunchQuantity, dinnerQuantity: meal.dinnerQuantity, soda: meal.sodaPrice != null,
         },
       }} />
       <MealAdjustments meal={meal} readOnly={!admin} />

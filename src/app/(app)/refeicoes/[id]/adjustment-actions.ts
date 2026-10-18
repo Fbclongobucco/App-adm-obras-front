@@ -33,6 +33,29 @@ export async function addAdjustment(mealId: string, _state: AdjustmentState, dat
   return { done: Date.now() };
 }
 
+/** Numeros do dia; entregas e refrigerantes null usam o padrao. */
+export type DayInput = {
+  type: "EXTRA_DAY" | "CHANGED";
+  lunchQuantity: number | null;
+  dinnerQuantity: number | null;
+  lunchDeliveries: number | null;
+  dinnerDeliveries: number | null;
+  sodas: number | null;
+  note: string | null;
+};
+
+/** Grava o dia extra ou o dia alterado da data (cria ou substitui). */
+export async function putDay(mealId: string, date: string, input: DayInput): Promise<FormState> {
+  const result = await apiCall(`/api/meals/${mealId}/adjustments/${date}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  if (!result.ok) return { error: errorMessage(result.errorCode, result.message) };
+  revalidatePath(`/refeicoes/${mealId}`);
+  revalidatePath("/", "layout");
+  return undefined;
+}
+
 export async function removeAdjustment(mealId: string, adjustmentId: string): Promise<FormState> {
   const result = await apiCall(`/api/meals/${mealId}/adjustments/${adjustmentId}`, { method: "DELETE" });
   if (!result.ok) return { error: errorMessage(result.errorCode, result.message) };

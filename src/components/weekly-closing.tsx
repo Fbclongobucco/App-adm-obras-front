@@ -2,13 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
-import { addAdjustment, removeAdjustment } from "@/app/(app)/refeicoes/[id]/adjustment-actions";
-import { addRestaurantAdjustment, removeRestaurantAdjustments } from "@/app/(app)/restaurantes/[id]/closing-actions";
+import { addAdjustment, putDay, removeAdjustment } from "@/app/(app)/refeicoes/[id]/adjustment-actions";
+import {
+  addRestaurantAdjustment, putRestaurantDay, removeRestaurantAdjustments,
+} from "@/app/(app)/restaurantes/[id]/closing-actions";
 import { TextField } from "@/components/form/fields";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { DAY_STATUS, WEEKDAYS, type ClosingWeek, type DayClosing, type WeeklyClosing } from "@/lib/types";
+import {
+  DAY_STATUS, WEEKDAYS, type ClosingWeek, type DayClosing, type MealDay, type WeeklyClosing,
+} from "@/lib/types";
 
-/** Refeicao editavel no fechamento: rotulo e refeicoes servidas para o formulario de dia extra. */
+/** Refeicao editavel no fechamento: rotulo, refeicoes servidas, padrao e se o restaurante fornece refrigerante. */
 export type ClosingMeal = {
   id: string;
   label: string;
@@ -16,6 +20,7 @@ export type ClosingMeal = {
   dinner: boolean;
   lunchQuantity: number | null;
   dinnerQuantity: number | null;
+  soda: boolean;
 };
 
 /** Na refeicao, a edicao vale so para ela; no restaurante, para todas as refeicoes dele. */
@@ -57,46 +62,121 @@ function statusLabel(day: DayClosing): string {
 
 function statusClass(day: DayClosing): string {
   if (day.status === "NO_SERVICE" || day.partialNoService) return "text-accent";
-  if (day.status === "EXTRA_DAY") return "font-semibold text-highlight";
+  if (day.status === "EXTRA_DAY" || day.status === "CHANGED") return "font-semibold text-highlight";
   return "text-body";
 }
 
-type Editing = { date: string; kind: "holiday" | "extra" } | null;
+type Editing = { date: string; kind: "holiday" | "day" } | null;
 
-/** Formulario inline do feriado (observacao) ou do dia extra (quantidades por refeicao e observacao). */
+/** Dia ajustado (dia extra ou alterado): entregas e refrigerantes abrem com os numeros efetivos. */
+const isAdjusted = (status: string) => status === "EXTRA_DAY" || status === "CHANGED";
+
+/** Numeros iniciais de uma refeicao no formulario: os do dia, ou o padrao quando o dia nao fornece. */
+function initialNumbers(meal: ClosingMeal, day: DayClosing, scope: ClosingScope) {
+  const numbers: Pick<MealDay, "status" | "lunchMeals" | "dinnerMeals" | "lunchDeliveries" | "dinnerDeliveries" | "sodas">
+    | undefined = scope.kind === "meal" ? day : day.meals.find((item) => item.mealId === meal.id);
+  const serving = numbers && (numbers.status === "SERVICE" || isAdjusted(numbers.status));
+  const lunch = serving ? numbers.lunchMeals : meal.lunchQuantity ?? 0;
+  const dinner = serving ? numbers.dinnerMeals : meal.dinnerQuantity ?? 0;
+  if (!numbers || !isAdjusted(numbers.status)) {
+    return { lunch, dinner, lunchDeliveries: undefined, dinnerDeliveries: undefined, sodas: undefined };
+  }
+  // Entregas e refrigerantes so vem preenchidos quando diferem do padrao: vazio continua seguindo as
+  // quantidades (1 entrega por refeicao com marmitas; 1 refrigerante por entrega)
+  const lunchDeliveries = lunch > 0 ? 1 : 0;
+  const dinnerDeliveries = dinner > 0 ? 1 : 0;
+  const differs = (value: number, standard: number) => (value === standard ? undefined : value);
+  return {
+    lunch,
+    dinner,
+    lunchDeliveries: differs(numbers.lunchDeliveries, lunchDeliveries),
+    dinnerDeliveries: differs(numbers.dinnerDeliveries, dinnerDeliveries),
+    sodas: meal.soda ? differs(numbers.sodas, numbers.lunchDeliveries + numbers.dinnerDeliveries) : undefined,
+  };
+}
+
+function MealDayFields({ meal, day, scope, labelled }: {
+  meal: ClosingMeal; day: DayClosing; scope: ClosingScope; labelled: boolean;
+}) {
+  const initial = initialNumbers(meal, day, scope);
+  const field = (label: string) => (labelled ? `${label} · ${meal.label}` : label);
+  const count = { type: "number", min: 0, step: 1 } as const;
+  return (
+    <>
+      {meal.lunch && (
+        <TextField key={`lunch-${meal.id}`} label={field("Almoços")} name={`lunch-${meal.id}`} {...count}
+          max={10000} defaultValue={initial.lunch} required />
+      )}
+      {meal.dinner && (
+        <TextField key={`dinner-${meal.id}`} label={field("Jantares")} name={`dinner-${meal.id}`} {...count}
+          max={10000} defaultValue={initial.dinner} required />
+      )}
+      {meal.lunch && (
+        <TextField key={`lunchDeliveries-${meal.id}`} label={field("Entregas do almoço")}
+          name={`lunchDeliveries-${meal.id}`} {...count} max={100} placeholder="Padrão: 1"
+          defaultValue={initial.lunchDeliveries} />
+      )}
+      {meal.dinner && (
+        <TextField key={`dinnerDeliveries-${meal.id}`} label={field("Entregas do jantar")}
+          name={`dinnerDeliveries-${meal.id}`} {...count} max={100} placeholder="Padrão: 1"
+          defaultValue={initial.dinnerDeliveries} />
+      )}
+      {meal.soda && (
+        <TextField key={`sodas-${meal.id}`} label={field("Refrigerantes")} name={`sodas-${meal.id}`} {...count}
+          max={10000} placeholder="Padrão: 1 por entrega" defaultValue={initial.sodas} />
+      )}
+    </>
+  );
+}
+
+/**
+ * Formulario inline do feriado (observacao) ou do dia: almocos, jantares, entregas do almoco e do jantar e
+ * refrigerantes de cada refeicao, mais a observacao. Em dia util grava o dia alterado; no fim de semana, o dia
+ * extra. Entregas e refrigerantes vazios usam o padrao.
+ */
 function DayForm({ day, kind, scope, onDone }: {
-  day: DayClosing; kind: "holiday" | "extra"; scope: ClosingScope; onDone: () => void;
+  day: DayClosing; kind: "holiday" | "day"; scope: ClosingScope; onDone: () => void;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const meals = scope.kind === "meal" ? [scope.meal] : scope.meals;
+  const weekend = isWeekend(day);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const note = (form.get("note") as string | null)?.trim() || null;
-    const type = kind === "holiday" ? "NO_SERVICE" : "EXTRA_DAY";
-    const value = (name: string) => (form.has(name) ? Number(form.get(name) || 0) : null);
+    const value = (name: string) => {
+      const raw = (form.get(name) as string | null)?.trim();
+      return raw ? Number(raw) : null;
+    };
+    const numbers = (meal: ClosingMeal) => ({
+      lunchQuantity: meal.lunch ? value(`lunch-${meal.id}`) ?? 0 : null,
+      dinnerQuantity: meal.dinner ? value(`dinner-${meal.id}`) ?? 0 : null,
+      lunchDeliveries: meal.lunch ? value(`lunchDeliveries-${meal.id}`) : null,
+      dinnerDeliveries: meal.dinner ? value(`dinnerDeliveries-${meal.id}`) : null,
+      sodas: meal.soda ? value(`sodas-${meal.id}`) : null,
+    });
+    const type = weekend ? "EXTRA_DAY" : "CHANGED";
     start(async () => {
       let result: { error?: string } | undefined;
-      if (scope.kind === "meal") {
-        const data = new FormData();
-        data.set("date", day.date);
-        data.set("type", type);
-        if (note) data.set("note", note);
-        if (kind === "extra") {
-          if (scope.meal.lunch) data.set("lunchQuantity", String(value(`lunch-${scope.meal.id}`) ?? 0));
-          if (scope.meal.dinner) data.set("dinnerQuantity", String(value(`dinner-${scope.meal.id}`) ?? 0));
+      if (kind === "holiday") {
+        if (scope.kind === "meal") {
+          const data = new FormData();
+          data.set("date", day.date);
+          data.set("type", "NO_SERVICE");
+          if (note) data.set("note", note);
+          result = await addAdjustment(scope.meal.id, undefined, data);
+        } else {
+          result = await addRestaurantAdjustment(scope.restaurantId, {
+            date: day.date, type: "NO_SERVICE", note, quantities: [],
+          });
         }
-        result = await addAdjustment(scope.meal.id, undefined, data);
+      } else if (scope.kind === "meal") {
+        result = await putDay(scope.meal.id, day.date, { type, note, ...numbers(scope.meal) });
       } else {
-        result = await addRestaurantAdjustment(scope.restaurantId, {
-          date: day.date, type, note,
-          quantities: kind === "extra"
-            ? meals.map((meal) => ({
-              mealId: meal.id, lunchQuantity: value(`lunch-${meal.id}`), dinnerQuantity: value(`dinner-${meal.id}`),
-            }))
-            : [],
+        result = await putRestaurantDay(scope.restaurantId, day.date, {
+          type, note, meals: meals.map((meal) => ({ mealId: meal.id, ...numbers(meal) })),
         });
       }
       if (result?.error) setError(result.error);
@@ -106,26 +186,24 @@ function DayForm({ day, kind, scope, onDone }: {
 
   const title = kind === "holiday"
     ? `Feriado em ${formatDate(day.date)}: sem fornecimento${scope.kind === "restaurant" ? " em todas as refeições" : ""}`
-    : `Dia extra em ${formatDate(day.date)}`;
+    : `${weekend ? "Dia extra" : "Fornecimento"} em ${formatDate(day.date)}`;
   return (
     <form onSubmit={submit} className="space-y-3 bg-surface/60 px-3 py-3 text-left">
       <fieldset disabled={pending} className="space-y-3">
         <legend className="text-sm font-semibold text-title">{title}</legend>
+        {kind === "day" && (
+          <p className="text-xs text-body">
+            Entregas e refrigerantes vazios usam o padrão: 1 entrega por refeição com marmitas e 1 refrigerante
+            por entrega.{scope.kind === "restaurant" && !weekend && " Refeição zerada fica sem fornecimento no dia."}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {kind === "extra" && meals.flatMap((meal) => [
-            meal.lunch && (
-              <TextField key={`lunch-${meal.id}`} label={meals.length > 1 ? `Almoços · ${meal.label}` : "Almoços no dia"}
-                name={`lunch-${meal.id}`} type="number" min={0} max={10000} step={1}
-                defaultValue={meal.lunchQuantity ?? 0} />
-            ),
-            meal.dinner && (
-              <TextField key={`dinner-${meal.id}`} label={meals.length > 1 ? `Jantares · ${meal.label}` : "Jantares no dia"}
-                name={`dinner-${meal.id}`} type="number" min={0} max={10000} step={1}
-                defaultValue={meal.dinnerQuantity ?? 0} />
-            ),
-          ])}
-          <TextField label="Observação" name="note" maxLength={100}
-            placeholder={kind === "holiday" ? "Ex.: Feriado de N. Sra. Aparecida" : "Ex.: Sábado trabalhado"} />
+          {kind === "day" && meals.map((meal) => (
+            <MealDayFields key={meal.id} meal={meal} day={day} scope={scope} labelled={meals.length > 1} />
+          ))}
+          <TextField label="Observação" name="note" maxLength={100} defaultValue={day.note ?? undefined}
+            placeholder={kind === "holiday" ? "Ex.: Feriado de N. Sra. Aparecida"
+              : weekend ? "Ex.: Sábado trabalhado" : "Ex.: Uma equipe a menos no jantar"} />
         </div>
       </fieldset>
       {error && (
@@ -145,6 +223,10 @@ function DayForm({ day, kind, scope, onDone }: {
   );
 }
 
+/**
+ * Acoes da linha do dia (administrador): fornecimento -> Editar e Feriado; dia alterado -> Editar e Restaurar
+ * padrao; dia extra -> Editar e Remover; fim de semana sem ajuste -> Dia extra; sem fornecimento -> Desmarcar.
+ */
 function DayActions({ day, scope, onEdit }: { day: DayClosing; scope: ClosingScope; onEdit: (editing: Editing) => void }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
@@ -160,25 +242,30 @@ function DayActions({ day, scope, onEdit }: { day: DayClosing; scope: ClosingSco
   }
 
   const button = "rounded px-2 py-1 text-sm font-medium text-accent hover:bg-accent/5 disabled:opacity-60 whitespace-nowrap";
-  const removable = day.status === "NO_SERVICE" || day.status === "EXTRA_DAY" || day.partialNoService;
+  const date = formatDate(day.date);
+  const edit = (kind: "holiday" | "day", label: string, aria: string) => (
+    <button type="button" className={button} onClick={() => onEdit({ date: day.date, kind })} aria-label={`${aria} ${date}`}>
+      {label}
+    </button>
+  );
+  const removeButton = (label: string, aria: string) => (
+    <button type="button" disabled={pending} onClick={remove} className={button} aria-label={`${aria} ${date}`}
+      title={scope.kind === "restaurant" ? "Remove os ajustes da data em todas as refeições do restaurante" : undefined}>
+      {pending ? "Removendo..." : label}
+    </button>
+  );
+  const restorable = day.status === "CHANGED" || day.partialNoService;
   return (
     <>
-      {removable ? (
-        <button type="button" disabled={pending} onClick={remove} className={button}
-          aria-label={`${day.status === "EXTRA_DAY" ? "Remover dia extra" : "Desmarcar feriado"} de ${formatDate(day.date)}`}>
-          {pending ? "Removendo..." : day.status === "EXTRA_DAY" ? "Remover" : "Desmarcar"}
-        </button>
-      ) : isWeekend(day) ? (
-        <button type="button" className={button} onClick={() => onEdit({ date: day.date, kind: "extra" })}
-          aria-label={`Incluir dia extra em ${formatDate(day.date)}`}>
-          Dia extra
-        </button>
-      ) : (
-        <button type="button" className={button} onClick={() => onEdit({ date: day.date, kind: "holiday" })}
-          aria-label={`Marcar feriado em ${formatDate(day.date)}`}>
-          Feriado
-        </button>
-      )}
+      <span className="inline-flex flex-wrap justify-end gap-1">
+        {day.status === "NO_SERVICE" && removeButton("Desmarcar", "Desmarcar feriado de")}
+        {day.status === "OFF" && edit("day", "Dia extra", "Incluir dia extra em")}
+        {day.status === "EXTRA_DAY" && edit("day", "Editar", "Editar dia extra de")}
+        {day.status === "EXTRA_DAY" && removeButton("Remover", "Remover dia extra de")}
+        {(day.status === "SERVICE" || day.status === "CHANGED") && edit("day", "Editar", "Editar fornecimento de")}
+        {day.status === "SERVICE" && !day.partialNoService && edit("holiday", "Feriado", "Marcar feriado em")}
+        {restorable && removeButton("Restaurar padrão", "Restaurar padrão de")}
+      </span>
       {error && <span role="alert" className="block text-xs text-accent">{error}</span>}
     </>
   );

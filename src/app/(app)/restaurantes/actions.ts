@@ -12,7 +12,8 @@ export async function saveRestaurant(id: string | null, _state: FormState, data:
     phone: text(data, "phone"),
     address: address(data, true),
     projectId: text(data, "projectId"),
-    deliveryFee: decimal(data, "deliveryFee"),
+    lunchDeliveryFee: decimal(data, "lunchDeliveryFee"),
+    dinnerDeliveryFee: decimal(data, "dinnerDeliveryFee"),
     sodaPrice: decimal(data, "sodaPrice"),
   }, LIST);
 }

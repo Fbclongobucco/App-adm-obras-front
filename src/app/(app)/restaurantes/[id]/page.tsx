@@ -22,7 +22,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   return (
     <>
       <PageHeader title={restaurant.name}
-        description={<>Restaurante · Entrega: <DeliveryFee value={restaurant.deliveryFee} /> · <SodaPrice value={restaurant.sodaPrice} /></>}
+        description={<>Restaurante · Entrega: <DeliveryFee lunch={restaurant.lunchDeliveryFee} dinner={restaurant.dinnerDeliveryFee} /> · <SodaPrice value={restaurant.sodaPrice} /></>}
         action={admin ? { href: `/restaurantes/${id}/editar`, label: "Editar" } : undefined}>
         {admin && <DeleteButton action={deleteRestaurant.bind(null, id)} label="este restaurante" />}
       </PageHeader>
@@ -41,7 +41,7 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
           restaurantId: id,
           meals: restaurant.meals.map((meal) => ({
             id: meal.id, label: MEAL_TYPES[meal.mealType], ...MEAL_SERVES[meal.mealType],
-            lunchQuantity: meal.lunchQuantity, dinnerQuantity: meal.dinnerQuantity,
+            lunchQuantity: meal.lunchQuantity, dinnerQuantity: meal.dinnerQuantity, soda: meal.sodaPrice != null,
           })),
         }} />
       )}

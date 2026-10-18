@@ -14,8 +14,11 @@ function dailyTotals(restaurant: Restaurant) {
   ];
 }
 
-export function DeliveryFee({ value }: { value: number | null }) {
-  return <>{value == null ? "Sem taxa" : `${formatCurrency(value)} por entrega`}</>;
+/** Taxa unica quando almoco e jantar cobram o mesmo; senao as duas, com "sem taxa" na vazia. */
+export function DeliveryFee({ lunch, dinner }: { lunch: number | null; dinner: number | null }) {
+  if (lunch === dinner) return <>{lunch == null ? "Sem taxa" : `${formatCurrency(lunch)} por entrega`}</>;
+  const fee = (value: number | null) => (value == null ? "sem taxa" : formatCurrency(value));
+  return <>{`Almoço ${fee(lunch)} · Jantar ${fee(dinner)}`}</>;
 }
 
 export function SodaPrice({ value }: { value: number | null }) {
@@ -37,7 +40,7 @@ export function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
         </p>
         <p className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-body">
           <span className="font-mono">{formatPhone(restaurant.phone)}</span>
-          <span>Entrega: <DeliveryFee value={restaurant.deliveryFee} /></span>
+          <span>Entrega: <DeliveryFee lunch={restaurant.lunchDeliveryFee} dinner={restaurant.dinnerDeliveryFee} /></span>
           <span><SodaPrice value={restaurant.sodaPrice} /></span>
         </p>
       </div>

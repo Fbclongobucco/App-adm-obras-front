@@ -27,6 +27,7 @@ async function call(method, path, body) {
 }
 
 const post = (path, body) => call("POST", path, body);
+const put = (path, body) => call("PUT", path, body);
 
 // CPF e CNPJ com digito verificador valido, gerados a partir de um numero (mesma entrada, mesmo valor).
 function checkDigits(base, weights) {
@@ -71,7 +72,10 @@ function nextDate(from, to, match) {
   return null;
 }
 
-/** Ajustes de exemplo: sabado com 6 almocos e um dia util sem fornecimento. */
+/**
+ * Ajustes de exemplo: sabado com 6 almocos, um dia util sem fornecimento e o dia util seguinte alterado
+ * (uma janta a menos e duas entregas no almoco).
+ */
 async function seedAdjustments(mealId, mealType, start, end) {
   const saturday = nextDate(start, end, (weekday) => weekday === 6);
   const weekday = nextDate(start, end, (weekday) => weekday >= 1 && weekday <= 5);
@@ -87,6 +91,18 @@ async function seedAdjustments(mealId, mealType, start, end) {
     await post(`/api/meals/${mealId}/adjustments`, {
       date: weekday, type: "NO_SERVICE", lunchQuantity: null, dinnerQuantity: null, note: "Feriado",
     });
+    const after = new Date(`${weekday}T12:00:00Z`);
+    after.setUTCDate(after.getUTCDate() + 1);
+    const changed = nextDate(after.toISOString().slice(0, 10), end, (day) => day >= 1 && day <= 5);
+    if (changed) {
+      const lunch = mealType !== "DINNER";
+      const dinner = mealType !== "LUNCH";
+      await put(`/api/meals/${mealId}/adjustments/${changed}`, {
+        type: "CHANGED", note: "Uma equipe a menos no jantar",
+        lunchQuantity: lunch ? 8 : null, dinnerQuantity: dinner ? 5 : null,
+        lunchDeliveries: lunch ? 2 : null, dinnerDeliveries: null, sodas: null,
+      });
+    }
   }
 }
 
@@ -214,8 +230,10 @@ async function main() {
       phone,
       address: { ...city, street: "Rua do Comércio", number: String(100 + i * 25), zipCode: city.zipCode },
       projectId: project.id,
-      // Metade dos restaurantes cobra entrega; refrigerante (1 por entrega) em parte deles
-      deliveryFee: i % 2 === 0 ? "8.00" : null,
+      // Metade dos restaurantes cobra entrega (o primeiro com taxa diferente no jantar); refrigerante
+      // (1 por entrega) em parte deles
+      lunchDeliveryFee: i % 2 === 0 ? "8.00" : null,
+      dinnerDeliveryFee: i === 0 ? "10.00" : i % 2 === 0 ? "8.00" : null,
       sodaPrice: i % 3 === 0 ? null : "5.00",
     });
     // Alterna um restaurante com almoco e jantar e um com refeicoes cadastradas separadamente

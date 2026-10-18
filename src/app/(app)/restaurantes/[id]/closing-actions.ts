@@ -25,6 +25,33 @@ export async function addRestaurantAdjustment(
   return undefined;
 }
 
+export type MealDayInput = {
+  mealId: string;
+  lunchQuantity: number | null;
+  dinnerQuantity: number | null;
+  lunchDeliveries: number | null;
+  dinnerDeliveries: number | null;
+  sodas: number | null;
+};
+
+/**
+ * Numeros do dia em todas as refeicoes do restaurante, gravados pela API de uma vez. No dia alterado, refeicao
+ * zerada fica sem fornecimento e refeicao igual ao padrao fica sem ajuste.
+ */
+export async function putRestaurantDay(
+  restaurantId: string,
+  date: string,
+  input: { type: "EXTRA_DAY" | "CHANGED"; note: string | null; meals: MealDayInput[] },
+): Promise<FormState> {
+  const result = await apiCall(`/api/restaurants/${restaurantId}/adjustments/${date}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+  if (!result.ok) return { error: errorMessage(result.errorCode, result.message) };
+  revalidatePath("/", "layout");
+  return undefined;
+}
+
 /** Remove os ajustes da data em todas as refeicoes do restaurante. */
 export async function removeRestaurantAdjustments(restaurantId: string, date: string): Promise<FormState> {
   const result = await apiCall(`/api/restaurants/${restaurantId}/adjustments/${date}`, { method: "DELETE" });

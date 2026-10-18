@@ -43,11 +43,14 @@ function plural(count: number, one: string, many: string) {
 
 /** Custo calculado pela API: marmitas + entrega + refrigerante, e o total ate o termino da obra. */
 export function MealCost({ meal }: { meal: Meal }) {
+  const serves = MEAL_SERVES[meal.mealType];
+  const charged = (serves.lunch && meal.restaurant.lunchDeliveryFee != null)
+    || (serves.dinner && meal.restaurant.dinnerDeliveryFee != null);
   const parts = [
     { label: "Marmitas", value: formatCurrency(meal.mealsDailyPrice) },
     {
       label: `Entrega (${plural(meal.deliveriesPerDay, "entrega", "entregas")})`,
-      value: meal.restaurant.deliveryFee == null ? "Sem taxa" : formatCurrency(meal.deliveryDailyPrice),
+      value: charged ? formatCurrency(meal.deliveryDailyPrice) : "Sem taxa",
     },
     {
       label: meal.sodaPrice == null
@@ -61,6 +64,7 @@ export function MealCost({ meal }: { meal: Meal }) {
     { label: "Dias úteis (seg–sex)", value: meal.workingDays ?? "—" },
     { label: "Sem fornecimento", value: meal.noServiceDays },
     { label: "Dias de fornecimento", value: meal.serviceDays ?? "—" },
+    { label: "Dias alterados", value: meal.changedDays },
     {
       label: `Dias extras (${meal.extraDays})`,
       value: meal.extraDays === 0 ? "—" : formatCurrency(meal.extraDaysPrice),

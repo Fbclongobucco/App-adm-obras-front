@@ -30,6 +30,9 @@ function RemoveButton({ mealId, adjustmentId, label }: { mealId: string; adjustm
   );
 }
 
+/** Dia alterado e editado no fechamento semanal, com os numeros do dia. */
+const INCLUDED_TYPES: AdjustmentType[] = ["EXTRA_DAY", "NO_SERVICE"];
+
 function AdjustmentForm({ meal }: { meal: Meal }) {
   const [state, formAction, pending] = useActionState<AdjustmentState, FormData>(
     addAdjustment.bind(null, meal.id),
@@ -51,7 +54,7 @@ function AdjustmentForm({ meal }: { meal: Meal }) {
           Incluir ajuste
         </legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2" role="radiogroup" aria-label="Tipo de ajuste">
-          {(Object.keys(ADJUSTMENT_TYPES) as AdjustmentType[]).map((value) => (
+          {INCLUDED_TYPES.map((value) => (
             <label key={value} className="flex items-center gap-2 text-sm text-title">
               <input type="radio" name="type" value={value} checked={type === value}
                 onChange={() => setType(value)} className="size-4 accent-highlight" />
@@ -92,7 +95,10 @@ function AdjustmentForm({ meal }: { meal: Meal }) {
   );
 }
 
-/** Dias extras e dias sem fornecimento da refeicao. So administrador inclui e remove. */
+/**
+ * Dias extras, dias alterados e dias sem fornecimento da refeicao. So administrador inclui e remove; o dia
+ * alterado e gravado pelo fechamento semanal.
+ */
 export function MealAdjustments({ meal, readOnly }: { meal: Meal; readOnly?: boolean }) {
   const serves = MEAL_SERVES[meal.mealType];
   return (
@@ -102,13 +108,15 @@ export function MealAdjustments({ meal, readOnly }: { meal: Meal; readOnly?: boo
         <p className="text-sm text-body">Nenhum ajuste. Todos os dias úteis do período contam como fornecimento.</p>
       ) : (
         <div className="relative overflow-x-auto rounded border border-line/50">
-          <table className="w-full min-w-[32rem] text-left text-sm">
+          <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="border-b border-line/60 bg-surface text-xs uppercase tracking-wide text-title">
               <tr>
                 <th className="px-3 py-2 font-semibold">Data</th>
                 <th className="px-3 py-2 font-semibold">Tipo</th>
                 {serves.lunch && <th className="px-3 py-2 text-right font-semibold">Almoços</th>}
                 {serves.dinner && <th className="px-3 py-2 text-right font-semibold">Jantares</th>}
+                <th className="px-3 py-2 text-right font-semibold">Entregas</th>
+                <th className="px-3 py-2 text-right font-semibold">Refrig.</th>
                 <th className="px-3 py-2 text-right font-semibold">Valor</th>
                 <th className="px-3 py-2 font-semibold">Observação</th>
                 {!readOnly && <th className="w-px px-3 py-2"><span className="sr-only">Ações</span></th>}
@@ -116,7 +124,10 @@ export function MealAdjustments({ meal, readOnly }: { meal: Meal; readOnly?: boo
             </thead>
             <tbody className="divide-y divide-line/30">
               {meal.adjustments.map((adjustment) => {
-                const extra = adjustment.type === "EXTRA_DAY";
+                const numbers = adjustment.type !== "NO_SERVICE";
+                const deliveries = serves.lunch && serves.dinner
+                  ? `${adjustment.lunchDeliveries} + ${adjustment.dinnerDeliveries}`
+                  : String(adjustment.deliveries);
                 return (
                   <tr key={adjustment.id} className={adjustment.inPeriod ? "" : "text-body opacity-60"}>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -125,10 +136,16 @@ export function MealAdjustments({ meal, readOnly }: { meal: Meal; readOnly?: boo
                       {!adjustment.inPeriod && <span className="block text-xs text-accent">fora do período</span>}
                     </td>
                     <td className="px-3 py-2">{ADJUSTMENT_TYPES[adjustment.type]}</td>
-                    {serves.lunch && <td className="px-3 py-2 text-right font-mono">{extra ? adjustment.lunchQuantity ?? 0 : "—"}</td>}
-                    {serves.dinner && <td className="px-3 py-2 text-right font-mono">{extra ? adjustment.dinnerQuantity ?? 0 : "—"}</td>}
+                    {serves.lunch && <td className="px-3 py-2 text-right font-mono">{numbers ? adjustment.lunchQuantity ?? 0 : "—"}</td>}
+                    {serves.dinner && <td className="px-3 py-2 text-right font-mono">{numbers ? adjustment.dinnerQuantity ?? 0 : "—"}</td>}
+                    <td className="px-3 py-2 text-right font-mono whitespace-nowrap"
+                      title={serves.lunch && serves.dinner ? "Almoço + jantar" : undefined}>
+                      {numbers ? deliveries : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono">{numbers ? adjustment.sodas : "—"}</td>
                     <td className="px-3 py-2 text-right font-mono whitespace-nowrap">
-                      {extra ? `+ ${formatCurrency(adjustment.price)}` : "− 1 dia"}
+                      {adjustment.type === "EXTRA_DAY" ? `+ ${formatCurrency(adjustment.price)}`
+                        : adjustment.type === "CHANGED" ? formatCurrency(adjustment.price) : "− 1 dia"}
                     </td>
                     <td className="px-3 py-2 text-body">{adjustment.note ?? "—"}</td>
                     {!readOnly && (

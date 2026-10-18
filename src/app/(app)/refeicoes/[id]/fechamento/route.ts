@@ -19,7 +19,8 @@ export async function GET(request: Request, { params }: RouteContext<"/refeicoes
     prices: {
       lunch: meal.lunchPrice,
       dinner: meal.dinnerPrice,
-      deliveryFee: meal.restaurant.deliveryFee,
+      lunchDeliveryFee: meal.restaurant.lunchDeliveryFee,
+      dinnerDeliveryFee: meal.restaurant.dinnerDeliveryFee,
       soda: meal.sodaPrice,
     },
   });
